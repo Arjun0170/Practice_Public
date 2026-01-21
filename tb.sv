@@ -10,9 +10,7 @@ module systolic_array_tb;
     parameter int ip_width = 8;
     parameter int op_width = 32;
     parameter int k_dim    = 128;  // Stream length (K dimension)
-
-    // Must match DUT default unless you override DUT instantiation
-    parameter int pipe_lat = 3;
+    parameter int pipe_lat = 3;    // Must match DUT unless overridden
 
     // ------------------------------------------------------------------------
     // DUT I/O
@@ -65,10 +63,14 @@ module systolic_array_tb;
 
     // ------------------------------------------------------------------------
     // Waveform / Activity Dump Controls (optional)
-    // Define one of:
+    //
+    // Enable via compile defines:
     //   +define+DUMP_SHM              (Cadence SimVision SHM)
     //   +define+DUMP_VCD              (Full-run VCD)
     //   +define+DUMP_ACTIVITY_VCD     (Windowed VCD for power)
+    //
+    // Optional:
+    //   +define+POWER_ONLY            (Exit after activity window is dumped)
     // ------------------------------------------------------------------------
 
 `ifdef DUMP_SHM
@@ -80,7 +82,7 @@ module systolic_array_tb;
 
 `ifdef DUMP_ACTIVITY_VCD
     // Windowed VCD is best for large arrays (power/activity extraction).
-    // Dumps a bounded steady-state window after feed starts.
+    // Dumps a bounded window after feed starts.
     localparam int DUMP_START_CYC = 20;   // cycles after en first goes high
     localparam int DUMP_LEN_CYC   = 500;  // number of cycles to dump
 
@@ -91,24 +93,31 @@ module systolic_array_tb;
         repeat (DUMP_START_CYC) @(posedge clk);
 
         $dumpfile("activity.vcd");
-        $dumpvars(0, systolic_array_tb);
+        // Dump ONLY the DUT to avoid huge TB memory dumps (critical for 128/256)
+        $dumpvars(0, dut);
 
         repeat (DUMP_LEN_CYC) @(posedge clk);
 
         $dumpoff;
+
+`ifdef POWER_ONLY
+        $display("POWER_ONLY: dumped activity window, exiting early.");
+        $finish;
+`endif
     end
 `elsif DUMP_VCD
     initial begin
         $dumpfile("waves.vcd");
-        $dumpvars(0, systolic_array_tb);
+        // Dumping only DUT keeps VCD smaller; change to systolic_array_tb if needed
+        $dumpvars(0, dut);
     end
 `endif
 
     // ------------------------------------------------------------------------
     // Scalable Timeout Watchdog (cycle-based, sweep-safe)
-    // NOTE: Your DUT's done logic triggers after en deasserts and then counts
-    // down roughly: skew_lat + pipe_lat + rows cycles.
-    // Total expected from first feed cycle to done ≈ k_dim + (skew_lat+pipe_lat+rows) + margin.
+    // NOTE: DUT done logic triggers after en deasserts and counts down roughly:
+    //   (rows-1 + cols-1) + pipe_lat + rows
+    // Total expected from first feed cycle to done ≈ k_dim + that + margin.
     // ------------------------------------------------------------------------
     localparam int skew_lat       = (rows - 1) + (cols - 1);
     localparam int postfeed_lat   = skew_lat + pipe_lat + rows;
@@ -119,10 +128,8 @@ module systolic_array_tb;
         int cyc;
         cyc = 0;
 
-        // Wait until reset is released
         wait (rst === 1'b0);
 
-        // Count cycles until done or timeout
         while ((compute_done !== 1'b1) && (cyc < timeout_cycles)) begin
             @(posedge clk);
             cyc++;
@@ -142,7 +149,6 @@ module systolic_array_tb;
     // Main Test
     // ------------------------------------------------------------------------
     initial begin : main
-        // Metadata (helps in sweep logs)
         $display("RUN CFG: rows=%0d cols=%0d ip=%0d op=%0d k=%0d pipe_lat=%0d",
                  rows, cols, ip_width, op_width, k_dim, pipe_lat);
 
@@ -152,11 +158,11 @@ module systolic_array_tb;
         $readmemh("golden_output.hex", golden_ref_mem);
 
         // 2) Initialize
-        rst          = 1'b1;
-        en           = 1'b0;
-        clr          = 1'b0;
-        input_matrix = '0;
-        weight_matrix= '0;
+        rst           = 1'b1;
+        en            = 1'b0;
+        clr           = 1'b0;
+        input_matrix  = '0;
+        weight_matrix = '0;
 
         // 3) Reset sequence
         repeat(10) @(posedge clk);
@@ -166,9 +172,9 @@ module systolic_array_tb;
         $display("Starting Feed... K_DIM=%0d", k_dim);
         for (int k = 0; k < k_dim; k++) begin
             @(posedge clk);
-            #1; // small delay to model TB drive after clock edge
+            #1;
             en           = 1'b1;
-            clr          = (k == 0);   // clear accumulators on first token
+            clr          = (k == 0);
             input_matrix = inputs_mem[k];
             weight_matrix= weights_mem[k];
         end
@@ -176,15 +182,15 @@ module systolic_array_tb;
         // 5) End feed
         @(posedge clk);
         #1;
-        en           = 1'b0;
-        clr          = 1'b0;
-        input_matrix = '0;
-        weight_matrix= '0;
+        en            = 1'b0;
+        clr           = 1'b0;
+        input_matrix  = '0;
+        weight_matrix = '0;
 
         $display("Feed Complete. Waiting for computation...");
 
-        // 6) Wait for result (synchronous, edge-safe)
-        @(posedge clk iff (compute_done === 1'b1));
+        // 6) Wait for result (robust form)
+        wait (compute_done === 1'b1);
 
         // 7) Check result
         #10;
@@ -197,9 +203,6 @@ module systolic_array_tb;
             $display("\n========================================");
             $display("   TEST FAILED!");
             $display("   cycles_count (DUT): %0d", cycles_count);
-            // Uncomment for smaller configs only (very large buses are hard to print)
-            // $display("Expected: %h", golden_ref_mem[0]);
-            // $display("Got:      %h", output_matrix);
             $display("========================================\n");
         end
 
