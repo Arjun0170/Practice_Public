@@ -3,7 +3,7 @@
 module systolic_array_tb;
 
     // ------------------------------------------------------------------------
-    // Parameters (match DUT + Python generator)
+    // Parameters 
     // ------------------------------------------------------------------------
     parameter int rows     = 64;
     parameter int cols     = 64;
@@ -63,14 +63,6 @@ module systolic_array_tb;
 
     // ------------------------------------------------------------------------
     // Waveform / Activity Dump Controls (optional)
-    //
-    // Enable via compile defines:
-    //   +define+DUMP_SHM              (Cadence SimVision SHM)
-    //   +define+DUMP_VCD              (Full-run VCD)
-    //   +define+DUMP_ACTIVITY_VCD     (Windowed VCD for power)
-    //
-    // Optional:
-    //   +define+POWER_ONLY            (Exit after activity window is dumped)
     // ------------------------------------------------------------------------
 
 `ifdef DUMP_SHM
@@ -81,8 +73,7 @@ module systolic_array_tb;
 `endif
 
 `ifdef DUMP_ACTIVITY_VCD
-    // Windowed VCD is best for large arrays (power/activity extraction).
-    // Dumps a bounded window after feed starts.
+
     localparam int DUMP_START_CYC = 20;   // cycles after en first goes high
     localparam int DUMP_LEN_CYC   = 500;  // number of cycles to dump
 
@@ -93,7 +84,6 @@ module systolic_array_tb;
         repeat (DUMP_START_CYC) @(posedge clk);
 
         $dumpfile("activity.vcd");
-        // Dump ONLY the DUT to avoid huge TB memory dumps (critical for 128/256)
         $dumpvars(0, dut);
 
         repeat (DUMP_LEN_CYC) @(posedge clk);
@@ -108,15 +98,12 @@ module systolic_array_tb;
 `elsif DUMP_VCD
     initial begin
         $dumpfile("waves.vcd");
-        // Dumping only DUT keeps VCD smaller; change to systolic_array_tb if needed
         $dumpvars(0, dut);
     end
 `endif
 
     // ------------------------------------------------------------------------
     // Scalable Timeout Watchdog (cycle-based, sweep-safe)
-    // NOTE: DUT done logic triggers after en deasserts and counts down roughly:
-    //   (rows-1 + cols-1) + pipe_lat + rows
     // Total expected from first feed cycle to done ≈ k_dim + that + margin.
     // ------------------------------------------------------------------------
     localparam int skew_lat       = (rows - 1) + (cols - 1);
@@ -151,24 +138,18 @@ module systolic_array_tb;
     initial begin : main
         $display("RUN CFG: rows=%0d cols=%0d ip=%0d op=%0d k=%0d pipe_lat=%0d",
                  rows, cols, ip_width, op_width, k_dim, pipe_lat);
-
-        // 1) Load vectors
         $readmemh("input_matrix.hex",  inputs_mem);
         $readmemh("weight_matrix.hex", weights_mem);
         $readmemh("golden_output.hex", golden_ref_mem);
-
-        // 2) Initialize
         rst           = 1'b1;
         en            = 1'b0;
         clr           = 1'b0;
         input_matrix  = '0;
         weight_matrix = '0;
 
-        // 3) Reset sequence
         repeat(10) @(posedge clk);
         #1 rst = 1'b0;
 
-        // 4) Feed data
         $display("Starting Feed... K_DIM=%0d", k_dim);
         for (int k = 0; k < k_dim; k++) begin
             @(posedge clk);
@@ -179,7 +160,6 @@ module systolic_array_tb;
             weight_matrix= weights_mem[k];
         end
 
-        // 5) End feed
         @(posedge clk);
         #1;
         en            = 1'b0;
@@ -189,10 +169,10 @@ module systolic_array_tb;
 
         $display("Feed Complete. Waiting for computation...");
 
-        // 6) Wait for result (robust form)
+
         wait (compute_done === 1'b1);
 
-        // 7) Check result
+
         #10;
         if (output_matrix === golden_ref_mem[0]) begin
             $display("\n========================================");
