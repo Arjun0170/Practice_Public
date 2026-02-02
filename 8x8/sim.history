@@ -1,0 +1,1 @@
+s1(28Jan2026:12:28:13):  xrun -64bit -sv -access +rwc +define+DUMP_ACTIVITY_VCD +DUMP_START_CYC=20 +DUMP_LEN_CYC=500 -l sim.log Systolic_Array_TB.sv systolic_array.sv mac_unit.sv 
