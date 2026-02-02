@@ -1,0 +1,5 @@
+ACT_SRC=none
+VCD_FILE=activity.vcd
+VCD_SCOPE=systolic_array_tb.dut
+SAIF_FILE=activity.saif
+SAIF_SCOPE=systolic_array_tb.dut

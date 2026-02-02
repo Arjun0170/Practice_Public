@@ -1,0 +1,71 @@
+xrun(64): 22.09-s003: (c) Copyright 1995-2022 Cadence Design Systems, Inc.
+TOOL:	xrun(64)	22.09-s003: Started on Jan 28, 2026 at 12:28:13 IST
+xrun
+	-64bit
+	-sv
+	-access +rwc
+	+define+DUMP_ACTIVITY_VCD
+	+DUMP_START_CYC=20
+	+DUMP_LEN_CYC=500
+	-l sim.log
+	Systolic_Array_TB.sv
+	systolic_array.sv
+	mac_unit.sv
+
+   User defined plus("+") options:
+	+DUMP_START_CYC=20
+	+DUMP_LEN_CYC=500
+
+file: Systolic_Array_TB.sv
+	module worklib.systolic_array_tb:sv
+		errors: 0, warnings: 0
+file: systolic_array.sv
+	module worklib.systolic_array:sv
+		errors: 0, warnings: 0
+file: mac_unit.sv
+	module worklib.mac_unit:sv
+		errors: 0, warnings: 0
+		Caching library 'worklib' ....... Done
+	Elaborating the design hierarchy:
+	Top level design units:
+		systolic_array_tb
+xmelab: *W,DSEMEL: This SystemVerilog design will be simulated as per IEEE 1800-2009 SystemVerilog simulation semantics. Use -disable_sem2009 option for turning off SV 2009 simulation semantics.
+	Building instance overlay tables: .................... Done
+	Generating native compiled code:
+		worklib.mac_unit:sv <0x18dd1ced>
+			streams:  18, words:  6458
+		worklib.systolic_array_tb:sv <0x3682d76b>
+			streams:  14, words: 25499
+		worklib.systolic_array:sv <0x1f34bbbc>
+			streams: 104, words: 62115
+	Building instance specific data structures.
+	Loading native compiled code:     .................... Done
+	Design hierarchy summary:
+		                  Instances  Unique
+		Modules:                 66       3
+		Registers:             1125      47
+		Scalar wires:           150       -
+		Vectored wires:         278       -
+		Always blocks:          274       8
+		Initial blocks:           4       4
+		Cont. assignments:       32       4
+		Pseudo assignments:      73      10
+		Simulation timescale:  10ps
+	Writing initial simulation snapshot: worklib.systolic_array_tb:sv
+Loading snapshot worklib.systolic_array_tb:sv .................... Done
+xmsim: *W,DSEM2009: This SystemVerilog design is simulated as per IEEE 1800-2009 SystemVerilog simulation semantics. Use -disable_sem2009 option for turning off SV 2009 simulation semantics.
+xcelium> source /home/install/XCELIUM2209/tools/xcelium/files/xmsimrc
+xcelium> run
+RUN CFG: rows=8 cols=8 ip=8 op=32 k=64 pipe_lat=3
+Starting Feed... K_DIM=64
+Feed Complete. Waiting for computation...
+
+========================================
+   TEST PASSED! Dimensions: 8x8
+   cycles_count (DUT): 89
+========================================
+
+Simulation complete via $finish(1) at time 1025 NS + 0
+./Systolic_Array_TB.sv:229         $finish;
+xcelium> exit
+TOOL:	xrun(64)	22.09-s003: Exiting on Jan 28, 2026 at 12:28:14 IST  (total: 00:00:01)
